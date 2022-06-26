@@ -3,7 +3,8 @@ const createNsfPlayer = (audioContext, message) => {
         message = audioContext;
         audioContext = null;
     }
-    if (typeof message !== 'function') message = () => null;
+    if (typeof message !== 'function')
+        message = () => null;
 
     let songData = null;
     let fileName = null;
@@ -12,7 +13,7 @@ const createNsfPlayer = (audioContext, message) => {
     const inputs = 2;
     const outputs = 2;
 
-	let ctx = null;
+    let ctx = null;
     let emu;
     let node;
 
@@ -32,19 +33,19 @@ const createNsfPlayer = (audioContext, message) => {
         if (cachedNSFs.has(fileName)) {
             initBuffer(cachedNSFs.get(fileName));
             resolve();
-        } 
-		else {
+        } else {
             resolve(
-				fetch(fileName, { method: "GET" })
-					.then(response => response.arrayBuffer())
-					.then(data => {
-						cachedNSFs.set(fileName, data);
-						initBuffer(data);
-					})
-					.catch(error => {
-						console.error("Error: ", error);
-					})
-            );
+                fetch(fileName, {
+                    method: "GET"
+                })
+                .then(response => response.arrayBuffer())
+                .then(data => {
+                    cachedNSFs.set(fileName, data);
+                    initBuffer(data);
+                })
+                .catch(error => {
+                    console.error("Error: ", error);
+                }));
         }
     });
 
@@ -54,17 +55,18 @@ const createNsfPlayer = (audioContext, message) => {
         if (!window.AudioContext) {
             if (window.webkitAudioContext) {
                 window.AudioContext = window.webkitAudioContext;
-            } 
-			else if (window.mozAudioContext) {
+            } else if (window.mozAudioContext) {
                 window.AudioContext = window.mozAudioContext;
-            } 
-			else {
+            } else {
                 alert('Web Audio API is not supported.');
             }
         }
 
         try {
-            ctx = audioContext || new AudioContext({ latencyHint: "balanced", sampleRate: 48000 });
+            ctx = audioContext || new AudioContext({
+                latencyHint: "balanced",
+                sampleRate: 48000
+            });
         } catch (err) {
             console.error(`Unable to create AudioContext. Error: ${err}`);
             return;
@@ -137,7 +139,7 @@ const createNsfPlayer = (audioContext, message) => {
         const read_string = () => {
             const value = Module.Pointer_stringify(Module.getValue(ref + offset, 'i8*'));
             offset += 4;
-            return value;;
+            return value;
         }
 
         const res = {};
@@ -170,23 +172,23 @@ const createNsfPlayer = (audioContext, message) => {
         if (!node && ctx.createJavaScriptNode) {
             node = ctx.createJavaScriptNode(bufferSize, inputs, outputs);
         }
-		
+
         if (!node && ctx.createScriptProcessor) {
             node = ctx.createScriptProcessor(bufferSize, inputs, outputs);
         }
 
         node.onaudioprocess = (e) => {
             if (Module.ccall('gme_track_ended', 'number', ['number'], [emu]) == 1) {
-				if (node) {
-					node.disconnect();
-					message('End of stream.');
-					return;
-				}
+                if (node) {
+                    node.disconnect();
+                    message('End of stream.');
+                    return;
+                }
             }
 
             const channels = [e.outputBuffer.getChannelData(0), e.outputBuffer.getChannelData(1)];
             const err = Module.ccall('gme_play', 'number', ['number', 'number', 'number'], [emu, bufferSize * 2, buffer]);
-			
+
             for (var i = 0; i < bufferSize; i++) {
                 for (var n = 0; n < e.outputBuffer.numberOfChannels; n++) {
                     channels[n][i] = Module.getValue(buffer + i * e.outputBuffer.numberOfChannels * 2 + n * 4, 'i32') / INT16_MAX;
@@ -197,5 +199,12 @@ const createNsfPlayer = (audioContext, message) => {
         node.connect(ctx.destination);
     };
 
-    return { load, play, stop, getTrackCount, getTrackInfo, unload };
+    return {
+        load,
+        play,
+        stop,
+        getTrackCount,
+        getTrackInfo,
+        unload
+    };
 };
