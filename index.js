@@ -16,6 +16,7 @@ const createNsfPlayer = (audioContext, message) => {
     let ctx = null;
     let emu;
     let node;
+    let distort = 4
 
     const cachedNSFs = new Map();
     const bufferSize = 1024 * 16;
@@ -41,6 +42,7 @@ const createNsfPlayer = (audioContext, message) => {
                 .then(response => response.arrayBuffer())
                 .then(data => {
                     cachedNSFs.set(fileName, data);
+                    console.log(data)
                     initBuffer(data);
                 })
                 .catch(error => {
@@ -191,13 +193,43 @@ const createNsfPlayer = (audioContext, message) => {
 
             for (var i = 0; i < bufferSize; i++) {
                 for (var n = 0; n < e.outputBuffer.numberOfChannels; n++) {
-                    channels[n][i] = Module.getValue(buffer + i * e.outputBuffer.numberOfChannels * 2 + n * 4, 'i32') / INT16_MAX;
+                    channels[n][i] = Module.getValue(buffer + i * e.outputBuffer.numberOfChannels * 2 + n * 2, 'i32') / INT16_MAX;
+                    
                 }
             }
+            console.log(channels)
         }
 
         node.connect(ctx.destination);
     };
+
+    const setPlaybackTempo = (tempo) => {
+        console.log(Module.ccall('gme_set_tempo', 'number', ['number', 'number'], [emu, tempo]))
+    }
+
+    const getVoiceNames = () => {
+        voices = []
+        const voiceCount = Module.ccall('gme_voice_count', 'number', ['number'], [emu])
+        for (let i = 0; i < voiceCount; i++) {
+            voices.push(Module.ccall('gme_voice_name', 'string', ['number', 'number'], [emu, i]))
+        }
+
+        return voices
+    }
+
+    const muteVoice  = (voice, muteStatus) => {
+        // muteStatus = 1 : Mute
+        // muteStatus = 0 : Unmute
+        Module.ccall('gme_mute_voice', 'number', ['number', 'number', 'number'], [emu, voice, muteStatus])
+    }
+
+    const togglePause = () => {
+        if (ctx.state === 'running') {
+            ctx.suspend()
+        } else if (ctx.state === 'suspended') {
+            ctx.resume()
+        }
+    }
 
     return {
         load,
@@ -205,6 +237,10 @@ const createNsfPlayer = (audioContext, message) => {
         stop,
         getTrackCount,
         getTrackInfo,
-        unload
+        setPlaybackTempo,
+        getVoiceNames,
+        muteVoice,
+        unload,
+        togglePause
     };
 };
